@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Narrative Drift Tracker</title>
+<style>
+  :root {
+    --bg-page: #f5f5f7;
+    --bg-card: #ffffff;
+    --text-main: #1a1a1f;
+    --text-dim: #55515e;
+    --text-dimmer: #8a8894;
+    --border-soft: #e5e5ec;
+    --border-mid: #d2d2db;
+    --badge-bg-low: #e7f5e8;
+    --badge-text-low: #27652a;
+    --badge-bg-med: #fff4e0;
+    --badge-text-med: #8a5a00;
+    --badge-bg-high: #ffe8ea;
+    --badge-text-high: #8a0014;
+    --pill-stable-bg: #e8f3ff;
+    --pill-stable-text: #004a99;
+    --pill-drift-bg: #fff4e0;
+    --pill-drift-text: #8a5a00;
+    --pill-alert-bg: #ffe8ea;
+    --pill-alert-text: #8a0014;
+    --panel-radius: 14px;
+    --card-radius: 12px;
+    --shadow-card: 0 18px 32px rgba(16,16,32,0.06);
+    --font-stack: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    font-family: var(--font-stack);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+  }
+
+  header.app-header {
+    background-color: var(--bg-card);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.04);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 16px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .product-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .product-subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    max-width: 480px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .daterange-dropdown {
+    background-color: var(--bg-page);
+    border: 1px solid var(--border-mid);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text-main);
+    min-width: 150px;
+  }
+
+  .user-avatar {
+    background-color: #1a1a1f;
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  main.app-main {
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  /* KPI row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+    gap: 16px;
+  }
+
+  .kpi-card {
+    background-color: var(--bg-card);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-soft);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .kpi-topline {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .kpi-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-top: 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .status-pill {
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    line-height: 1;
+    padding: 4px 8px;
+    display: inline-block;
+  }
+  .status-stable {
+    background-color: var(--pill-stable-bg);
+    color: var(--pill-stable-text);
+  }
+  .status-drift {
+    background-color: var(--pill-drift-bg);
+    color: var(--pill-drift-text);
+  }
+  .status-alert {
+    background-color: var(--pill-alert-bg);
+    color: var(--pill-alert-text);
+  }
+
+  .kpi-footnote {
+    font-size: 12px;
+    color: var(--text-dimmer);
+    margin-top: 6px;
+    line-height: 1.3;
+  }
+
+  /* Main grid for panels below KPIs */
+  .content-grid {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,400px);
+    grid-template-rows: auto auto;
+    gap: 24px;
+  }
+
+  @media(max-width:1100px){
+    .content-grid{
+      grid-template-columns:1fr;
+    }
+  }
+
+  .panel {
+    background-color: var(--bg-card);
+    border-radius: var(--panel-radius);
+    border: 1px solid var(--border-soft);
+    box-shadow: var(--shadow-card);
+    padding: 16px 16px 20px 16px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items:flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .panel-titles {
+    display:flex;
+    flex-direction:column;
+  }
+
+  .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .panel-subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    line-height:1.3;
+  }
+
+  .panel-actions {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+  }
+
+  /* Upload / Refresh buttons */
+  .upload-label {
+    background-color: #007aff;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    user-select: none;
+    line-height:1.2;
+  }
+  .upload-label:hover {
+    background-color: #005ecb;
+  }
+
+  .refresh-btn,
+  .search-btn,
+  .add-btn,
+  .save-note-btn {
+    background-color: #e9e9ef;
+    color: #333;
+    border: 1px solid var(--border-mid);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .refresh-btn:hover,
+  .search-btn:hover,
+  .add-btn:hover,
+  .save-note-btn:hover {
+    background-color: #dcdce2;
+  }
+
+  /* Concept Drift Timeline panel */
+  .chart-wrapper {
+    position: relative;
+    background-color: #fafafa;
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    padding:12px;
+  }
+
+  #driftChart {
+    width:100%;
+    height:220px;
+    display:block;
+  }
+
+  .chart-legend {
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    font-size:12px;
+    margin-top:8px;
+    color:var(--text-dim);
+  }
+
+  .legend-item {
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .legend-color {
+    width:10px;
+    height:10px;
+    border-radius:3px;
+    background-color:#000;
+  }
+
+  .chart-tooltip {
+    position:absolute;
+    background-color:#1a1a1f;
+    color:#fff;
+    font-size:11px;
+    padding:6px 8px;
+    border-radius:6px;
+    line-height:1.3;
+    pointer-events:none;
+    opacity:0;
+    max-width:160px;
+    box-shadow:0 12px 24px rgba(0,0,0,0.3);
+    z-index:10;
+  }
+
+  /* Alerts panel */
+  .alert-list {
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .alert-card {
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    background-color:#fff;
+    padding:12px 14px;
+    box-shadow:0 10px 20px rgba(16,16,32,0.04);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .alert-header-row {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-main);
+  }
+
+  .alert-score-status {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+
+  .alert-score {
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-main);
+  }
+
+  .drift-badge-high {
+    background-color: var(--badge-bg-high);
+    color: var(--badge-text-high);
+    border-radius:999px;
+    font-size:11px;
+    font-weight:600;
+    padding:3px 8px;
+    line-height:1.2;
+  }
+
+  .drift-badge-med {
+    background-color: var(--badge-bg-med);
+    color: var(--badge-text-med);
+    border-radius:999px;
+    font-size:11px;
+    font-weight:600;
+    padding:3px 8px;
+    line-height:1.2;
+  }
+
+  .drift-badge-low {
+    background-color: var(--badge-bg-low);
+    color: var(--badge-text-low);
+    border-radius:999px;
+    font-size:11px;
+    font-weight:600;
+    padding:3px 8px;
+    line-height:1.2;
+  }
+
+  .alert-explanation {
+    font-size:12px;
+    line-height:1.4;
+    color:var(--text-dim);
+  }
+
+  /* Deep Dive panel */
+  .deep-dive-row {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media(max-width:600px){
+    .deep-dive-row{
+      grid-template-columns:1fr;
+    }
+  }
+
+  .deep-box {
+    background-color:#fafafa;
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    padding:12px 14px;
+  }
+
+  .deep-box-title {
+    font-size:12px;
+    font-weight:600;
+    color:var(--text-main);
+    margin-bottom:6px;
+  }
+
+  .deep-snapshot-text {
+    font-size:12px;
+    color:var(--text-dim);
+    line-height:1.4;
+    margin-bottom:8px;
+  }
+
+  .term-chip-row {
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .term-chip {
+    border-radius:999px;
+    background-color:#fff;
+    border:1px solid var(--border-soft);
+    padding:4px 8px;
+    font-size:11px;
+    font-weight:500;
+    color:var(--text-main);
+  }
+
+  .notes-block {
+    margin-top:16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .notes-label {
+    font-size:12px;
+    color:var(--text-dim);
+    font-weight:500;
+  }
+
+  .notes-area {
+    width:100%;
+    min-height:60px;
+    border-radius:8px;
+    border:1px solid var(--border-mid);
+    font-size:12px;
+    padding:8px;
+    resize:vertical;
+    color:var(--text-main);
+    font-family:var(--font-stack);
+    background-color:#fff;
+  }
+
+  /* Ingestion Status panel */
+  .ingestion-table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    color:var(--text-main);
+    margin-bottom:16px;
+  }
+
+  .ingestion-table th {
+    text-align:left;
+    background-color:#fafafa;
+    border-bottom:1px solid var(--border-soft);
+    color:var(--text-dim);
+    font-weight:500;
+    font-size:12px;
+    padding:8px;
+  }
+
+  .ingestion-table td {
+    border-bottom:1px solid var(--border-soft);
+    padding:8px;
+    vertical-align:top;
+    line-height:1.4;
+    color:var(--text-main);
+  }
+
+  .search-block {
+    border-top:1px solid var(--border-soft);
+    padding-top:12px;
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .search-row {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  .search-row input {
+    flex:1;
+    min-width:180px;
+    font-size:13px;
+    padding:8px;
+    border-radius:6px;
+    border:1px solid var(--border-mid);
+    background-color:#fff;
+    color:var(--text-main);
+  }
+
+  .search-results {
+    display:grid;
+    gap:8px;
+  }
+
+  .result-card {
+    background-color:#fafafa;
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:10px 12px;
+  }
+
+  .result-meta {
+    font-size:11px;
+    font-weight:500;
+    color:var(--text-dimmer);
+    margin-bottom:4px;
+  }
+
+  .result-snippet {
+    font-size:12px;
+    line-height:1.4;
+    color:var(--text-main);
+  }
+
+  mark {
+    background:#fff4a8;
+    padding:0 2px;
+    border-radius:2px;
+  }
+
+  .no-results {
+    font-size:12px;
+    color:var(--text-dimmer);
+  }
+
+  /* Tracked Concepts panel */
+  .concept-status-msg {
+    font-size:12px;
+    margin-bottom:8px;
+  }
+
+  .warning {
+    color:#8a5a00;
+    background-color:#fff4e0;
+    border-radius:6px;
+    padding:4px 8px;
+    font-weight:500;
+  }
+
+  .ok {
+    color:#27652a;
+    background-color:#e7f5e8;
+    border-radius:6px;
+    padding:4px 8px;
+    font-weight:500;
+  }
+
+  .concept-chip-container {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:12px;
+  }
+
+  .concept-chip {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background-color:#fff;
+    border:1px solid var(--border-soft);
+    border-radius:999px;
+    padding:4px 10px;
+    font-size:12px;
+    box-shadow:0 10px 20px rgba(0,0,0,0.03);
+  }
+
+  .concept-text {
+    font-weight:500;
+    color:var(--text-main);
+  }
+
+  .concept-remove {
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+    color:var(--text-dim);
+    padding:0;
+  }
+
+  .concept-remove:hover {
+    color:#8a0014;
+  }
+
+  .concept-add-row {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  #new-concept-input {
+    flex:1;
+    min-width:180px;
+    font-size:13px;
+    padding:8px;
+    border-radius:6px;
+    border:1px solid var(--border-mid);
+    background-color:#fff;
+    color:var(--text-main);
+  }
+
+  /* Drift Event Log */
+  .event-table-wrapper {
+    overflow-x:auto;
+  }
+
+  .event-table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    color:var(--text-main);
+  }
+
+  .event-table th {
+    text-align:left;
+    background-color:#fafafa;
+    border-bottom:1px solid var(--border-soft);
+    color:var(--text-dim);
+    font-weight:500;
+    font-size:12px;
+    padding:8px;
+    white-space:nowrap;
+  }
+
+  .event-table td {
+    border-bottom:1px solid var(--border-soft);
+    padding:8px;
+    vertical-align:top;
+    line-height:1.4;
+    color:var(--text-main);
+  }
+
+  .sev-pill-high {
+    background-color: var(--badge-bg-high);
+    color: var(--badge-text-high);
+    border-radius:999px;
+    padding:3px 8px;
+    font-weight:600;
+    font-size:11px;
+    line-height:1.2;
+    display:inline-block;
+  }
+  .sev-pill-med {
+    background-color: var(--badge-bg-med);
+    color: var(--badge-text-med);
+    border-radius:999px;
+    padding:3px 8px;
+    font-weight:600;
+    font-size:11px;
+    line-height:1.2;
+    display:inline-block;
+  }
+  .sev-pill-low {
+    background-color: var(--badge-bg-low);
+    color: var(--badge-text-low);
+    border-radius:999px;
+    padding:3px 8px;
+    font-weight:600;
+    font-size:11px;
+    line-height:1.2;
+    display:inline-block;
+  }
+
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left">
+    <div class="product-title">
+      <span>Narrative Drift Tracker</span>
+    </div>
+    <div class="product-subtitle">
+      Monitoring semantic alignment across brand, strategy, culture. We show you when your language stops sounding like you.
+    </div>
+  </div>
+
+  <div class="header-right">
+    <select class="daterange-dropdown" aria-label="Select reporting range">
+      <option>Q1 2025 – Q3 2025</option>
+      <option>Q2 2025 – Q4 2025</option>
+      <option>Last 12 Months</option>
+    </select>
+    <div class="user-avatar" aria-label="User profile">AL</div>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- KPI CARDS -->
+  <section class="kpi-row" aria-label="Top KPIs">
+    <div class="kpi-card">
+      <div class="kpi-topline">
+        <span>Org Narrative Cohesion</span>
+        <span class="status-pill status-stable">Stable</span>
+      </div>
+      <div class="kpi-value">
+        <span>82/100</span>
+      </div>
+      <div class="kpi-footnote">
+        Internal and external story are mostly aligned.
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-topline">
+        <span># Drift Events This Quarter</span>
+        <span class="status-pill status-alert">Alert</span>
+      </div>
+      <div class="kpi-value">
+        <span>5</span>
+      </div>
+      <div class="kpi-footnote">
+        2 events are high-severity shifts in ethical framing.
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-topline">
+        <span>Highest Risk Concept</span>
+        <span class="status-pill status-drift">Drifting</span>
+      </div>
+      <div class="kpi-value">
+        <span>Trust</span>
+      </div>
+      <div class="kpi-footnote">
+        “Trust” is being reframed as “friction reduction.”
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-topline">
+        <span>Internal vs External Alignment</span>
+        <span class="status-pill status-stable">Moderate</span>
+      </div>
+      <div class="kpi-value">
+        <span>In Tension</span>
+      </div>
+      <div class="kpi-footnote">
+        Internally: efficiency. Externally: safety and care.
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CONTENT GRID -->
+  <section class="content-grid">
+
+    <!-- LEFT COLUMN: TIMELINE PANEL + EVENT LOG (full width on mobile) -->
+    <section class="panel" aria-labelledby="concept-drift-title">
+      <div class="panel-header">
+        <div class="panel-titles">
+          <div class="panel-title" id="concept-drift-title">
+            Concept Drift Over Time
+          </div>
+          <div class="panel-subtitle">
+            How selected concepts have shifted in meaning across quarters (Narrative Drift Index)
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-wrapper">
+        <canvas id="driftChart" width="600" height="220" aria-label="Drift index chart"></canvas>
+        <div id="chartTooltip" class="chart-tooltip" role="tooltip"></div>
+
+        <div class="chart-legend" id="chartLegend">
+          <!-- Legend populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: ALERTS PANEL -->
+    <section class="panel" aria-labelledby="alerts-title">
+      <div class="panel-header">
+        <div class="panel-titles">
+          <div class="panel-title" id="alerts-title">
+            Active Drift Alerts
+          </div>
+          <div class="panel-subtitle">
+            Concepts whose meaning is changing fastest
+          </div>
+        </div>
+      </div>
+
+      <div id="alertList" class="alert-list">
+        <!-- Alerts populated by JS -->
+      </div>
+    </section>
+
+    <!-- LEFT (FULL WIDTH ON MOBILE): DEEP DIVE -->
+    <section class="panel" aria-labelledby="deep-dive-title">
+      <div class="panel-header">
+        <div class="panel-titles">
+          <div class="panel-title" id="deep-dive-title">
+            Drift Detail: Trust
+          </div>
+          <div class="panel-subtitle">
+            Internal vs External Narrative
+          </div>
+        </div>
+      </div>
+
+      <div class="deep-dive-row">
+        <div class="deep-box">
+          <div class="deep-box-title">Internal Language Snapshot</div>
+          <div class="deep-snapshot-text" id="internalSnapshot">
+            “Trust” is now framed as “removing manual friction,” “automating handoffs,” and “keeping uptime high.”
+          </div>
+          <div class="term-chip-row" id="internalTerms">
+            <!-- internal terms chips -->
+          </div>
+        </div>
+
+        <div class="deep-box">
+          <div class="deep-box-title">External Language Snapshot</div>
+          <div class="deep-snapshot-text" id="externalSnapshot">
+            “Trust” is described as “safety, transparency, and care.” We promise customers protection and explainability.
+          </div>
+          <div class="term-chip-row" id="externalTerms">
+            <!-- external terms chips -->
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-block">
+        <div class="notes-label">Interpretation Notes (why is this drifting?)</div>
+        <textarea class="notes-area" id="notesArea"
+          placeholder="Example: Internal language is efficiency-first. External language is still reassurance-first. Possible reputational gap."></textarea>
+        <button class="save-note-btn" onclick="saveNote()" aria-label="Save note about trust drift">
+          Save Note
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: INGESTION STATUS PANEL -->
+    <section class="panel" aria-labelledby="ingestion-title">
+      <div class="panel-header">
+        <div class="panel-titles">
+          <div class="panel-title" id="ingestion-title">
+            Ingestion Status
+          </div>
+          <div class="panel-subtitle">
+            Indexed Sources (Internal & External)
+          </div>
+        </div>
+
+        <div class="panel-actions">
+          <!-- Upload Documents trigger -->
+          <label for="file-upload" class="upload-label" aria-label="Upload documents">
+            Upload Documents
+          </label>
+          <input
+            id="file-upload"
+            type="file"
+            accept=".txt,.pdf"
+            multiple
+            onchange="handleFileUpload(event)"
+            style="display:none"
+          >
+          <button onclick="refreshSources()" class="refresh-btn" aria-label="Refresh sources">
+            Refresh Sources
+          </button>
+        </div>
+      </div>
+
+      <table class="ingestion-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Channel</th>
+            <th>Timestamp</th>
+            <th>Sample Content</th>
+          </tr>
+        </thead>
+        <tbody id="ingestion-table-body">
+          <!-- Populated by renderIngestionTable() -->
+        </tbody>
+      </table>
+
+      <div class="search-block">
+        <label for="ingestion-search-input" style="font-size:12px;color:var(--text-dim);font-weight:500;">
+          Search ingested content for a concept
+        </label>
+        <div class="search-row">
+          <input id="ingestion-search-input" type="text" placeholder="e.g. trust, inclusion" />
+          <button
+            class="search-btn"
+            onclick="searchIngested(document.getElementById('ingestion-search-input').value)"
+            aria-label="Search ingested text">
+            Search
+          </button>
+        </div>
+        <div id="ingestion-search-results" class="search-results"></div>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- TRACKED CONCEPTS -->
+  <section class="panel" aria-labelledby="tracked-concepts-title">
+    <div class="panel-header">
+      <div class="panel-titles">
+        <div class="panel-title" id="tracked-concepts-title">
+          Tracked Concepts
+        </div>
+        <div class="panel-subtitle">
+          These are the values / ideas we monitor for semantic drift
+        </div>
+      </div>
+    </div>
+
+    <div id="concept-status-msg" class="concept-status-msg"></div>
+
+    <div id="concept-chip-container" class="concept-chip-container">
+      <!-- Chips populated by renderTrackedConcepts() -->
+    </div>
+
+    <div class="concept-add-row">
+      <input id="new-concept-input" type="text" placeholder="Add new concept (e.g. Dignity)" />
+      <button class="add-btn" onclick="addConcept()" aria-label="Add concept">
+        Add Concept
+      </button>
+    </div>
+  </section>
+
+  <!-- DRIFT EVENT LOG -->
+  <section class="panel" aria-labelledby="event-log-title">
+    <div class="panel-header">
+      <div class="panel-titles">
+        <div class="panel-title" id="event-log-title">
+          Drift Event Log
+        </div>
+        <div class="panel-subtitle">
+          Flagged changes in narrative tone, framing, or ethical positioning
+        </div>
+      </div>
+    </div>
+
+    <div class="event-table-wrapper">
+      <table class="event-table" aria-label="Historical drift events">
+        <thead>
+          <tr>
+            <th>Concept</th>
+            <th>When Detected</th>
+            <th>Source</th>
+            <th>Severity</th>
+            <th>Summary</th>
+          </tr>
+        </thead>
+        <tbody id="event-table-body">
+          <!-- Populated by renderDriftEvents() -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ---------------------------------
+   DUMMY DATA SOURCES / MODELS
+---------------------------------- */
+
+// Drift over time for the line chart
+const driftTimeSeries = [
+  { quarter: "Q1", trust: 0.12, inclusion: 0.05, efficiency: 0.18 },
+  { quarter: "Q2", trust: 0.22, inclusion: 0.08, efficiency: 0.25 },
+  { quarter: "Q3", trust: 0.41, inclusion: 0.12, efficiency: 0.27 },
+  { quarter: "Q4", trust: 0.37, inclusion: 0.15, efficiency: 0.30 }
+];
+
+// Alerts list
+const driftAlerts = [
+  {
+    concept: "Trust",
+    score: 0.41,
+    status: "High Drift",
+    explanation:
+      "‘Trust’ is tied to ‘efficiency’ internally, but ‘safety and assurance’ externally."
+  },
+  {
+    concept: "Inclusion",
+    score: 0.15,
+    status: "Monitor",
+    explanation:
+      "Focus shifting from belonging to performance contribution in team updates."
+  },
+  {
+    concept: "Customer Wellbeing",
+    score: 0.06,
+    status: "Low",
+    explanation:
+      "Narrative stable. Still framed around care, not churn reduction."
+  }
+];
+
+// Drift events table
+const driftEvents = [
+  {
+    concept: "Trust",
+    when: "2025-07-03",
+    source: "Internal All Hands",
+    severity: "High",
+    summary:
+      "Shifted from ‘protecting customers’ to ‘minimizing friction’"
+  },
+  {
+    concept: "Inclusion",
+    when: "2025-06-18",
+    source: "Product Hiring Guidelines",
+    severity: "Medium",
+    summary:
+      "Now linked to 'performance mindset' instead of 'psychological safety'"
+  },
+  {
+    concept: "Customer Wellbeing",
+    when: "2025-05-22",
+    source: "External Press Release",
+    severity: "Low",
+    summary:
+      "Still framed around empowering healthier choices"
+  },
+  {
+    concept: "Efficiency",
+    when: "2025-05-14",
+    source: "Ops Roadmap",
+    severity: "Medium",
+    summary:
+      "Language moving from 'cost to serve' toward 'customer self-service pressure'"
+  },
+  {
+    concept: "Transparency",
+    when: "2025-04-28",
+    source: "Support Playbook",
+    severity: "High",
+    summary:
+      "Removed 'explain decisions to customers' line"
+  }
+];
+
+// Ingested content sources, internal + external + uploads
+const ingestedDocuments = [
+  // Internal
+  {
+    id: "int-1",
+    sourceType: "Internal",
+    channel: "All Hands Transcript",
+    timestamp: "2025-07-03",
+    content:
+      "We protect user trust by reducing manual touchpoints and removing friction in escalation..."
+  },
+  {
+    id: "int-2",
+    sourceType: "Internal",
+    channel: "Strategy Memo: Q3 Growth",
+    timestamp: "2025-06-11",
+    content:
+      "Growth will come from operational efficiency and intelligent automation at scale..."
+  },
+  {
+    id: "int-3",
+    sourceType: "Internal",
+    channel: "Ethics Policy Draft",
+    timestamp: "2025-06-01",
+    content:
+      "We define inclusion as psychological safety, equitable opportunity, and active representation..."
+  },
+
+  // External
+  {
+    id: "ext-1",
+    sourceType: "External",
+    channel: "Press Release",
+    timestamp: "2025-07-02",
+    content:
+      "We are committed to earning customer trust through safety, transparency, and responsible AI deployment..."
+  },
+  {
+    id: "ext-2",
+    sourceType: "External",
+    channel: "Investor Call Summary",
+    timestamp: "2025-06-27",
+    content:
+      "Efficiency gains and automation will unlock margin expansion without compromising customer care..."
+  },
+  {
+    id: "ext-3",
+    sourceType: "External",
+    channel: "Brand Social Post",
+    timestamp: "2025-06-19",
+    content:
+      "Inclusion means every voice matters, every barrier comes down, and every outcome is fair..."
+  }
+];
+
+// Tracked concepts (user-editable)
+let trackedConcepts = [
+  "Trust",
+  "Inclusion",
+  "Customer Wellbeing",
+  "Transparency",
+  "Efficiency",
+  "Safety",
+  "Fairness",
+  "Autonomy",
+  "Care",
+  "Accountability"
+];
+
+/* ---------------------------------
+   RENDER FUNCTIONS
+---------------------------------- */
+
+// Render Drift Alerts panel
+function renderDriftAlerts() {
+  const listEl = document.getElementById("alertList");
+  if (!listEl) return;
+
+  listEl.innerHTML = driftAlerts
+    .map(alert => {
+      const badgeClass =
+        alert.status === "High Drift"
+          ? "drift-badge-high"
+          : alert.status === "Monitor"
+          ? "drift-badge-med"
+          : "drift-badge-low";
+
+      return `
+      <div class="alert-card">
+        <div class="alert-header-row">
+          <div>${alert.concept}</div>
+          <div class="alert-score-status">
+            <div class="alert-score">${alert.score.toFixed(2)} ↑</div>
+            <div class="${badgeClass}">${alert.status}</div>
+          </div>
+        </div>
+        <div class="alert-explanation">${alert.explanation}</div>
+      </div>
+    `;
+    })
+    .join("");
+}
+
+// Render Drift Events table
+function renderDriftEvents() {
+  const tbody = document.getElementById("event-table-body");
+  if (!tbody) return;
+
+  tbody.innerHTML = driftEvents
+    .map(evt => {
+      const sevClass =
+        evt.severity === "High"
+          ? "sev-pill-high"
+          : evt.severity === "Medium"
+          ? "sev-pill-med"
+          : "sev-pill-low";
+
+      return `
+      <tr>
+        <td>${evt.concept}</td>
+        <td>${evt.when}</td>
+        <td>${evt.source}</td>
+        <td><span class="${sevClass}">${evt.severity}</span></td>
+        <td>${evt.summary}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+// Render ingestion table
+function renderIngestionTable() {
+  const tableBody = document.getElementById("ingestion-table-body");
+  if (!tableBody) return;
+
+  tableBody.innerHTML = "";
+
+  ingestedDocuments.forEach(doc => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${doc.sourceType}</td>
+      <td>${doc.channel}</td>
+      <td>${doc.timestamp}</td>
+      <td>${doc.content.slice(0, 80)}...</td>
+    `;
+    tableBody.appendChild(row);
+  });
+}
+
+// Search ingested content
+function searchIngested(keyword) {
+  const resultsEl = document.getElementById("ingestion-search-results");
+  if (!resultsEl) return;
+
+  if (!keyword || keyword.trim() === "") {
+    resultsEl.innerHTML =
+      "<div class='no-results'>Enter a keyword to search ingested content.</div>";
+    return;
+  }
+
+  const results = ingestedDocuments.filter(doc =>
+    doc.content.toLowerCase().includes(keyword.toLowerCase())
+  );
+
+  if (results.length === 0) {
+    resultsEl.innerHTML =
+      "<div class='no-results'>No matches found in ingested content.</div>";
+    return;
+  }
+
+  resultsEl.innerHTML = results
+    .map(doc => {
+      return `
+        <div class="result-card">
+          <div class="result-meta">${doc.sourceType} • ${doc.channel} • ${doc.timestamp}</div>
+          <div class="result-snippet">${highlightTerm(
+            doc.content,
+            keyword
+          )}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+// highlight search term in snippet
+function highlightTerm(text, term) {
+  const re = new RegExp("(" + term + ")", "gi");
+  return text.replace(re, "<mark>$1</mark>");
+}
+
+// Add new source to ingestedDocuments on Refresh Sources
+function refreshSources() {
+  const newDoc = {
+    id: "int-" + (Math.random() * 10000).toFixed(0),
+    sourceType: "Internal",
+    channel: "Product Council Notes",
+    timestamp: new Date().toISOString().split("T")[0],
+    content:
+      "We talk about trust now mainly in terms of speed and automation uptime for customers..."
+  };
+  ingestedDocuments.push(newDoc);
+  renderIngestionTable();
+  alert("Sources refreshed and indexed.");
+}
+
+// Handle file upload (simulated parse)
+function handleFileUpload(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  Array.from(files).forEach(file => {
+    const timestamp = new Date().toISOString().split("T")[0];
+    const channelName = file.name.replace(/\.[^/.]+$/, "");
+
+    if (file.type === "text/plain") {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const content = e.target.result;
+        const newDoc = {
+          id: "upload-" + (Math.random() * 10000).toFixed(0),
+          sourceType: "Internal Upload",
+          channel: channelName,
+          timestamp: timestamp,
+          content: content.slice(0, 500)
+        };
+        ingestedDocuments.push(newDoc);
+        renderIngestionTable();
+      };
+      reader.readAsText(file);
+    } else if (file.type === "application/pdf") {
+      // simulate PDF to text
+      const newDoc = {
+        id: "upload-" + (Math.random() * 10000).toFixed(0),
+        sourceType: "Internal Upload",
+        channel: file.name,
+        timestamp: timestamp,
+        content:
+          "(PDF content placeholder: extracted text simulation...)"
+      };
+      ingestedDocuments.push(newDoc);
+      renderIngestionTable();
+    } else {
+      alert("Unsupported file type: " + file.type);
+    }
+  });
+
+  event.target.value = "";
+  alert("Files uploaded and indexed successfully!");
+}
+
+// Render tracked concepts as chips and status message
+function renderTrackedConcepts() {
+  const container = document.getElementById("concept-chip-container");
+  const status = document.getElementById("concept-status-msg");
+  if (!container || !status) return;
+
+  container.innerHTML = trackedConcepts
+    .map((concept, idx) => {
+      return `
+      <div class="concept-chip">
+        <span class="concept-text">${concept}</span>
+        <button class="concept-remove"
+          onclick="removeConcept(${idx})"
+          aria-label="Remove concept ${concept}">&times;</button>
+      </div>`;
+    })
+    .join("");
+
+  if (trackedConcepts.length < 10) {
+    status.innerHTML = `
+      <span class="warning">
+        You have ${trackedConcepts.length}/10 concepts.
+        Add more to unlock full drift tracking.
+      </span>`;
+  } else {
+    status.innerHTML = `
+      <span class="ok">
+        Ready. ${trackedConcepts.length} concepts will be monitored for drift.
+      </span>`;
+  }
+}
+
+// Add a new concept
+function addConcept() {
+  const input = document.getElementById("new-concept-input");
+  const value = input.value.trim();
+  if (!value) {
+    alert("Enter a concept name first.");
+    return;
+  }
+  trackedConcepts.push(value);
+  input.value = "";
+  renderTrackedConcepts();
+}
+
+// Remove a concept
+function removeConcept(idx) {
+  trackedConcepts.splice(idx, 1);
+  renderTrackedConcepts();
+}
+
+// Populate Deep Dive chips for internal/external associated terms
+function renderDeepDiveTerms() {
+  const internalTermsEl = document.getElementById("internalTerms");
+  const externalTermsEl = document.getElementById("externalTerms");
+  if (!internalTermsEl || !externalTermsEl) return;
+
+  const internalTerms = ["efficiency", "automation risk", "uptime"];
+  const externalTerms = ["safety", "care", "transparency"];
+
+  internalTermsEl.innerHTML = internalTerms
+    .map(term => `<div class="term-chip">${term}</div>`)
+    .join("");
+
+  externalTermsEl.innerHTML = externalTerms
+    .map(term => `<div class="term-chip">${term}</div>`)
+    .join("");
+}
+
+// Save Note button behavior
+function saveNote() {
+  const notesArea = document.getElementById("notesArea");
+  const val = notesArea.value.trim();
+  if (!val) {
+    alert("Note saved: (empty note)");
+  } else {
+    alert("Note saved: " + val);
+  }
+  notesArea.value = "";
+}
+
+/* ---------------------------------
+   CHART RENDERING LOGIC
+---------------------------------- */
+
+function drawDriftChart() {
+  const canvas = document.getElementById("driftChart");
+  const tooltip = document.getElementById("chartTooltip");
+  const legend = document.getElementById("chartLegend");
+  if (!canvas || !tooltip || !legend) return;
+
+  const ctx = canvas.getContext("2d");
+
+  // Concepts we'll chart
+  const seriesDefs = [
+    { key: "trust", label: "Trust", color: "#007aff" },
+    { key: "inclusion", label: "Inclusion", color: "#ff9500" },
+    { key: "efficiency", label: "Efficiency", color: "#34c759" }
+  ];
+
+  // Draw legend
+  legend.innerHTML = seriesDefs
+    .map(
+      s => `
+    <div class="legend-item">
+      <div class="legend-color" style="background-color:${s.color}"></div>
+      <div>${s.label}</div>
+    </div>
+    `
+    )
+    .join("");
+
+  // Chart paddings
+  const paddingLeft = 40;
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+
+  const chartWidth = canvas.width - paddingLeft - paddingRight;
+  const chartHeight = canvas.height - paddingTop - paddingBottom;
+
+  // x labels from driftTimeSeries.quarter
+  const xLabels = driftTimeSeries.map(d => d.quarter);
+
+  // y domain based on max drift
+  let maxVal = 0;
+  seriesDefs.forEach(s => {
+    driftTimeSeries.forEach(point => {
+      if (point[s.key] > maxVal) maxVal = point[s.key];
+    });
+  });
+  // add headroom
+  maxVal = Math.max(maxVal, 0.5);
+
+  // helper scale functions
+  function xPos(index) {
+    if (driftTimeSeries.length === 1) return paddingLeft + chartWidth / 2;
+    const step = chartWidth / (driftTimeSeries.length - 1);
+    return paddingLeft + step * index;
+  }
+
+  function yPos(val) {
+    const ratio = val / maxVal;
+    const y = chartHeight - ratio * chartHeight;
+    return paddingTop + y;
+  }
+
+  // draw axes
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#d2d2db";
+  ctx.lineWidth = 1;
+
+  // y axis
+  ctx.beginPath();
+  ctx.moveTo(paddingLeft, paddingTop);
+  ctx.lineTo(paddingLeft, paddingTop + chartHeight);
+  ctx.stroke();
+
+  // x axis
+  ctx.beginPath();
+  ctx.moveTo(paddingLeft, paddingTop + chartHeight);
+  ctx.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
+  ctx.stroke();
+
+  // y ticks
+  ctx.fillStyle = "#55515e";
+  ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+  ctx.textAlign = "right";
+
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const v = (maxVal / yTicks) * i;
+    const yy = yPos(v);
+    ctx.fillText(v.toFixed(2), paddingLeft - 6, yy + 3);
+
+    // light grid line
+    ctx.strokeStyle = i === yTicks ? "#d2d2db" : "#efeff4";
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, yy);
+    ctx.lineTo(paddingLeft + chartWidth, yy);
+    ctx.stroke();
+  }
+
+  // x labels
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#55515e";
+  xLabels.forEach((label, i) => {
+    const xx = xPos(i);
+    const yy = paddingTop + chartHeight + 16;
+    ctx.fillText(label, xx, yy);
+  });
+
+  // draw series lines
+  seriesDefs.forEach(s => {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    driftTimeSeries.forEach((point, i) => {
+      const xx = xPos(i);
+      const yy = yPos(point[s.key]);
+      if (i === 0) ctx.moveTo(xx, yy);
+      else ctx.lineTo(xx, yy);
+    });
+    ctx.stroke();
+
+    // draw points
+    driftTimeSeries.forEach((point, i) => {
+      const xx = xPos(i);
+      const yy = yPos(point[s.key]);
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(xx, yy, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
+
+  // Hover interaction
+  canvas.addEventListener("mousemove", function (e) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    let foundPoint = null;
+
+    seriesDefs.forEach(s => {
+      driftTimeSeries.forEach((point, i) => {
+        const xx = xPos(i);
+        const yy = yPos(point[s.key]);
+        const dx = mouseX - xx;
+        const dy = mouseY - yy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 6) {
+          foundPoint = {
+            series: s,
+            quarter: point.quarter,
+            value: point[s.key],
+            x: xx,
+            y: yy
+          };
+        }
+      });
+    });
+
+    if (foundPoint) {
+      tooltip.style.opacity = 1;
+      tooltip.style.left = foundPoint.x + 12 + "px";
+      tooltip.style.top = foundPoint.y + 12 + "px";
+      tooltip.innerHTML = `
+        <div style="font-weight:600;margin-bottom:4px;">
+          ${foundPoint.series.label}
+        </div>
+        <div style="font-size:11px;line-height:1.4;">
+          <div><strong>Quarter:</strong> ${foundPoint.quarter}</div>
+          <div><strong>Drift Index:</strong> ${foundPoint.value.toFixed(
+            2
+          )}</div>
+        </div>
+      `;
+    } else {
+      tooltip.style.opacity = 0;
+    }
+  });
+}
+
+/* ---------------------------------
+   PAGE INIT
+---------------------------------- */
+window.onload = function () {
+  renderDriftAlerts();
+  renderDriftEvents();
+  renderIngestionTable();
+  renderTrackedConcepts();
+  renderDeepDiveTerms();
+  drawDriftChart();
+};
+</script>
+
+</body>
+</html>
